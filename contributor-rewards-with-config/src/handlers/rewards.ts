@@ -1,7 +1,12 @@
 import { PluginSettings, EventRewardType, RewardEntryType, ContributorClass, TargetRole } from "../types/plugin-input";
 
 /**
- * Determine the contributor class of a user relative to an issue/pull
+ * Determine the contributor class of a user relative to an issue/pull.
+ * @param userLogin - The GitHub login of the user to classify
+ * @param issueAuthor - The GitHub login of the issue author
+ * @param assignees - Array of users assigned to the issue/PR
+ * @param isOrgMember - Whether the user is an organization member
+ * @returns The contributor class: ISSUER, ASSIGNEE, COLLABORATOR, or CONTRIBUTOR
  */
 export function getContributorClass(
   userLogin: string,
@@ -22,7 +27,14 @@ export function getContributorClass(
 }
 
 /**
- * Check if a user matches a target role
+ * Check if a user matches a target role based on their contributor class and activity.
+ * @param targetRole - The target role to match against
+ * @param contributorClass - The user's contributor class
+ * @param userLogin - The GitHub login of the user
+ * @param reviewers - Optional array of PR reviewers
+ * @param commenters - Optional array of issue/PR commenters
+ * @param committers - Optional array of PR committers
+ * @returns True if the user matches the target role, false otherwise
  */
 export function matchesTarget(
   targetRole: TargetRole,
@@ -51,8 +63,9 @@ export function matchesTarget(
 }
 
 /**
- * Parse event name into category and action
- * e.g. "pull_request.opened" -> { category: "pull_request", action: "opened" }
+ * Parse an event name into category and action components.
+ * @param eventName - The event name string (e.g., "pull_request.opened")
+ * @returns An object with category and action parts
  */
 export function parseEventName(eventName: string): { category: string; action: string } {
   const dotIndex = eventName.indexOf(".");
@@ -66,7 +79,10 @@ export function parseEventName(eventName: string): { category: string; action: s
 }
 
 /**
- * Get the reward configuration for a specific event
+ * Get the reward configuration for a specific event type.
+ * @param settings - The plugin settings containing reward configurations
+ * @param eventName - The full event name (e.g., "pull_request.opened")
+ * @returns The reward configuration for the event, or undefined if not found
  */
 export function getEventRewardConfig(settings: PluginSettings, eventName: string): EventRewardType | undefined {
   const { category, action } = parseEventName(eventName);
@@ -78,7 +94,13 @@ export function getEventRewardConfig(settings: PluginSettings, eventName: string
 }
 
 /**
- * Calculate reward for a contributor based on event config and context
+ * Calculate the reward value for a contributor based on event configuration.
+ * @param rewardConfig - The reward configuration for the event
+ * @param contextType - Whether this is a "pull" or "issue" context
+ * @param contributorClass - The contributor's class
+ * @param userLogin - The GitHub login of the user
+ * @param options - Optional arrays of reviewers, commenters, and committers
+ * @returns The reward value, or 0 if no reward applies
  */
 export function calculateReward(
   rewardConfig: EventRewardType | undefined,
@@ -112,7 +134,11 @@ export function calculateReward(
 }
 
 /**
- * Apply label overrides to a reward value
+ * Apply label-based overrides to a base reward value.
+ * @param baseReward - The base reward value before label overrides
+ * @param labels - Array of labels on the issue/PR
+ * @param labelOverrideConfig - Configuration mapping label names to reward overrides
+ * @returns The reward value after applying all label overrides
  */
 export function applyLabelOverrides(
   baseReward: number,
@@ -134,7 +160,7 @@ export function applyLabelOverrides(
 }
 
 /**
- * Reward result for a single contributor
+ * Represents the reward result for a single contributor.
  */
 export interface ContributorReward {
   login: string;
@@ -143,7 +169,14 @@ export interface ContributorReward {
 }
 
 /**
- * Calculate rewards for all contributors involved in an event
+ * Calculate rewards for all contributors involved in an event.
+ * @param settings - The plugin settings with reward configurations
+ * @param eventName - The full event name (e.g., "pull_request.opened")
+ * @param contributors - Array of contributors to evaluate
+ * @param contextType - Whether this is a "pull" or "issue" context
+ * @param labels - Array of labels on the issue/PR
+ * @param options - Optional arrays of reviewers, commenters, and committers
+ * @returns Array of ContributorReward objects for contributors with non-zero rewards
  */
 export function calculateRewards(
   settings: PluginSettings,
@@ -182,7 +215,9 @@ export function calculateRewards(
 }
 
 /**
- * Aggregate rewards across multiple events
+ * Aggregate rewards across multiple events for each contributor.
+ * @param rewards - Array of ContributorReward objects from multiple events
+ * @returns Map of login -> { total: aggregated reward sum, class: contributor class }
  */
 export function aggregateRewards(rewards: ContributorReward[]): Map<string, { total: number; class: ContributorClass }> {
   const aggregated = new Map<string, { total: number; class: ContributorClass }>();
